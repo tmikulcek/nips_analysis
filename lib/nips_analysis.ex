@@ -3,14 +3,15 @@ defmodule NipsAnalysis do
 
   def generate_reference_list(file) do
     CSV.decode(File.stream!(file), columns: true)
-      |> Enum.map(&extract_references/1)
+      |> Enum.map(&extract_reference_section/1)
       |> Enum.reject(fn tuple -> elem(tuple, 2) == :none end)
+      |> Enum.flat_map(&split_references/1)
       #|> Enum.count
       #|> Enum.flat_map(&extract_references/1)
       #|> Enum.map(&extract_authors/1)
   end
 
-  defp extract_references(row) do
+  defp extract_reference_section(row) do
     title = Enum.filter_map(row, &take_title/1, &(elem(&1, 1)))
     pdf = Enum.filter_map(row, &take_pdf/1, &(elem(&1, 1)))
     references = Enum.filter_map(row, &take_text/1, &(elem(&1, 1)))
@@ -25,6 +26,14 @@ defmodule NipsAnalysis do
     else
       {title, pdf, :none}
     end 
+  end
+  
+
+  defp split_references(reference_text) do
+    elem(reference_text, 2)
+      |> scan_for_references
+      |> Enum.drop_while(fn match_list -> !String.starts_with?(hd(match_list), "[1]") end)
+      |> Enum.map(&format_match/1)
   end
 
   defp extract_authors(reference) do
@@ -53,7 +62,9 @@ defmodule NipsAnalysis do
   end
 
   defp scan_for_references(text) do
-    Regex.scan(~r/^\[[0-9]+?\] ([^\[]+)/ms, text)
+    #TODO: include references that start with [Boh09] and similar
+    #Regex.scan(~r/^\[[0-9]+?\] ([^\[]+)/ms, text)
+    Regex.scan(~r/^\[[a-z0-9]+?\]([^\[]+)/msi, text)
   end
 
   defp format_match(match_list) do
