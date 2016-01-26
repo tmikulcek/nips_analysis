@@ -1,6 +1,6 @@
 defmodule NipsAnalysis do
   use Cesso
-  #TODO find missing articles
+
   def generate_reference_list(file) do
     CSV.decode(File.stream!(file), columns: true)
       |> Enum.map(&extract_references/1)
